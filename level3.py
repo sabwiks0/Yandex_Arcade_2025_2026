@@ -2,14 +2,13 @@ import arcade
 import random
 from database import db
 
-
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Puzzle Slider - Level 3"
 
-GRID_ROWS = 5  
-GRID_COLS = 5  
-TILE_SIZE = 80  
+GRID_ROWS = 5
+GRID_COLS = 5
+TILE_SIZE = 80
 GRID_X = (SCREEN_WIDTH - GRID_COLS * TILE_SIZE) // 2
 GRID_Y = (SCREEN_HEIGHT - GRID_ROWS * TILE_SIZE) // 2
 START_MOVES = 10
@@ -25,12 +24,22 @@ class Tile(arcade.Sprite):
         image_name = TILE_TYPES[tile_type]
         image_path = f"resources/sprites/tiles/{image_name}.png"
         super().__init__(image_path)
-        self.scale = TILE_SIZE / 100  
+        self.scale = TILE_SIZE / 100
+
+        # Анимационные параметры
+        self.target_x = 0
+        self.target_y = 0
+        self.animating_move = False
+        self.animating_fade = False
+        self.alpha = 255
+
         self.update_position()
 
     def update_position(self):
         self.center_x = GRID_X + self.col * TILE_SIZE + TILE_SIZE // 2
         self.center_y = GRID_Y + (GRID_ROWS - 1 - self.row) * TILE_SIZE + TILE_SIZE // 2
+        self.target_x = self.center_x
+        self.target_y = self.center_y
 
 
 class Arrow(arcade.Sprite):
@@ -38,7 +47,7 @@ class Arrow(arcade.Sprite):
         self.direction = direction
         image_path = f"resources/sprites/arrows/{direction}.png"
         super().__init__(image_path)
-        self.scale = 0.5 
+        self.scale = 0.5
         self.center_x = x
         self.center_y = y
 
@@ -49,7 +58,7 @@ class GameView(arcade.View):
         self.level = 3
         self.window = None
         self.player_name = "Player"
-        
+
         self.grid = [[None for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
         self.selected_tile = None
         self.moves_left = START_MOVES
@@ -60,13 +69,17 @@ class GameView(arcade.View):
         self.showing_high_scores = False
         self.result_saved = False
 
+        # Флаги для анимаций
+        self._waiting_to_fill = False
+        self._check_after_fill = False
+
         self.tile_list = arcade.SpriteList()
         self.arrow_list = arcade.SpriteList()
-        
+
         self.score_text = None
         self.moves_text = None
         self.level_text = None
-        
+
         self.setup()
 
     def setup(self):
@@ -80,6 +93,9 @@ class GameView(arcade.View):
         self.showing_stats = False
         self.showing_high_scores = False
         self.result_saved = False
+
+        self._waiting_to_fill = False
+        self._check_after_fill = False
 
         self.score_text = arcade.Text(
             f"Очки: {self.score}",
@@ -102,15 +118,61 @@ class GameView(arcade.View):
 
         self.generate_initial_grid()
 
+
+
+    def on_update(self, delta_time: float):
+        move_speed = 400
+        fade_speed = 300
+
+        # Обновляем все плитки
+        for tile in list(self.tile_list):
+            if tile.animating_move:
+                dx = tile.target_x - tile.center_x
+                dy = tile.target_y - tile.center_y
+                dist = (dx*dx + dy*dy) ** 0.5
+
+                if dist < 1.0:
+                    tile.center_x = tile.target_x
+                    tile.center_y = tile.target_y
+                    tile.animating_move = False
+                else:
+                    step = move_speed * delta_time
+                    if step > dist:
+                        step = dist
+                    tile.center_x += dx / dist * step
+                    tile.center_y += dy / dist * step
+
+            if tile.animating_fade:
+                tile.alpha -= int(fade_speed * delta_time)
+                if tile.alpha <= 0:
+                    tile.alpha = 0
+                    tile.animating_fade = False
+                    if tile in self.tile_list:
+                        self.tile_list.remove(tile)
+                    # Удаляем из сетки
+                    for r in range(GRID_ROWS):
+                        for c in range(GRID_COLS):
+                            if self.grid[r][c] is tile:
+                                self.grid[r][c] = None
+                                break
+
+        fading_tiles = [t for t in self.tile_list if t.animating_fade]
+        if self._waiting_to_fill and not fading_tiles:
+            self._waiting_to_fill = False
+            self.fill_empty_spaces()
+            if self._check_after_fill:
+                self._check_after_fill = False
+                self.check_matches()
+
     def save_game_result(self):
         # Сохранение результат игры
         if self.result_saved:
             return
-        
+
         victory = self.score > 0
         total_moves = START_MOVES
         moves_used = total_moves - self.moves_left
-        
+
         try:
             game_id = db.save_game_result(
                 player_name=self.player_name,
@@ -128,10 +190,10 @@ class GameView(arcade.View):
     def show_game_over(self):
         if self.result_saved:
             return
-        
+
         total_moves = START_MOVES
         moves_used = total_moves - self.moves_left
-        
+
         try:
             from game_over_view import GameOverView
             final_view = GameOverView(
@@ -158,7 +220,7 @@ class GameView(arcade.View):
 
     def generate_initial_grid(self):
         max_attempts = 150
-        
+
         for attempt in range(max_attempts):
             for row in range(GRID_ROWS):
                 for col in range(GRID_COLS):
@@ -166,13 +228,13 @@ class GameView(arcade.View):
                     tile = Tile(tile_type, row, col)
                     self.grid[row][col] = tile
                     self.tile_list.append(tile)
-            
+
             if not self.has_matches_in_grid():
                 return
-            
+
             self.tile_list.clear()
             self.grid = [[None for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
-        
+
         print(f"Предупреждение: не удалось сгенерировать поле без совпадений за {max_attempts} попыток")
         self.remove_initial_matches()
 
@@ -186,58 +248,12 @@ class GameView(arcade.View):
                         new_type = random.randint(0, len(TILE_TYPES) - 1)
                         while new_type == self.grid[row][col].tile_type:
                             new_type = random.randint(0, len(TILE_TYPES) - 1)
-                        
+
                         self.tile_list.remove(self.grid[row][col])
                         new_tile = Tile(new_type, row, col)
                         self.grid[row][col] = new_tile
                         self.tile_list.append(new_tile)
 
-    def find_all_matches(self):
-        matches = []
-        
-        # Пятерки по горизонтали
-        for row in range(GRID_ROWS):
-            for col in range(GRID_COLS - 4):
-                tiles = [self.grid[row][col + i] for i in range(5)]
-                if all(tiles) and all(t.tile_type == tiles[0].tile_type for t in tiles):
-                    matches.append([(row, col + i) for i in range(5)])
-        
-        # Пятерки по вертикали
-        for col in range(GRID_COLS):
-            for row in range(GRID_ROWS - 4):
-                tiles = [self.grid[row + i][col] for i in range(5)]
-                if all(tiles) and all(t.tile_type == tiles[0].tile_type for t in tiles):
-                    matches.append([(row + i, col) for i in range(5)])
-        
-        # Четверки по горизонтали
-        for row in range(GRID_ROWS):
-            for col in range(GRID_COLS - 3):
-                tiles = [self.grid[row][col + i] for i in range(4)]
-                if all(tiles) and all(t.tile_type == tiles[0].tile_type for t in tiles):
-                    matches.append([(row, col + i) for i in range(4)])
-        
-        # Четверки по вертикали
-        for col in range(GRID_COLS):
-            for row in range(GRID_ROWS - 3):
-                tiles = [self.grid[row + i][col] for i in range(4)]
-                if all(tiles) and all(t.tile_type == tiles[0].tile_type for t in tiles):
-                    matches.append([(row + i, col) for i in range(4)])
-        
-        # Тройки по горизонтали
-        for row in range(GRID_ROWS):
-            for col in range(GRID_COLS - 2):
-                tiles = [self.grid[row][col + i] for i in range(3)]
-                if all(tiles) and all(t.tile_type == tiles[0].tile_type for t in tiles):
-                    matches.append([(row, col + i) for i in range(3)])
-        
-        # Тройки по вертикали
-        for col in range(GRID_COLS):
-            for row in range(GRID_ROWS - 2):
-                tiles = [self.grid[row + i][col] for i in range(3)]
-                if all(tiles) and all(t.tile_type == tiles[0].tile_type for t in tiles):
-                    matches.append([(row + i, col) for i in range(3)])
-        
-        return matches
 
     def has_matches_in_grid(self):
         # Пятерки по горизонтали
@@ -293,13 +309,13 @@ class GameView(arcade.View):
     def check_matches(self):
         matches = set()
         points_to_add = 0
-        
+
         # Проверяем пятерки по горизонтали (50 очков)
         for row in range(GRID_ROWS):
             for col in range(GRID_COLS - 4):
                 # Получаем все 5 плиток в ряду
                 tiles = [self.grid[row][col + i] for i in range(5)]
-                
+
                 # Проверяем, что все плитки существуют и одного цвета
                 if all(tile is not None for tile in tiles):
                     first_type = tiles[0].tile_type
@@ -309,13 +325,13 @@ class GameView(arcade.View):
                             pos = (row, col + i)
                             matches.add(pos)
                         points_to_add += 50
-                        print(f"Найдена пятерка в строке {row}, столбец {col}-{col+4}")
-        
+                        print(f"Найдена пятерка в строке {row}, столбец {col}-{col + 4}")
+
         # Проверяем пятерки по вертикали (50 очков)
         for col in range(GRID_COLS):
             for row in range(GRID_ROWS - 4):
                 tiles = [self.grid[row + i][col] for i in range(5)]
-                
+
                 if all(tile is not None for tile in tiles):
                     first_type = tiles[0].tile_type
                     if all(tile.tile_type == first_type for tile in tiles):
@@ -323,13 +339,13 @@ class GameView(arcade.View):
                             pos = (row + i, col)
                             matches.add(pos)
                         points_to_add += 50
-                        print(f"Найдена пятерка в столбце {col}, строка {row}-{row+4}")
-        
+                        print(f"Найдена пятерка в столбце {col}, строка {row}-{row + 4}")
+
         # Проверяем четверки по горизонтали (40 очков)
         for row in range(GRID_ROWS):
             for col in range(GRID_COLS - 3):
                 tiles = [self.grid[row][col + i] for i in range(4)]
-                
+
                 if all(tile is not None for tile in tiles):
                     first_type = tiles[0].tile_type
                     if all(tile.tile_type == first_type for tile in tiles):
@@ -339,13 +355,13 @@ class GameView(arcade.View):
                             for pos in quad_positions:
                                 matches.add(pos)
                             points_to_add += 40
-                            print(f"Найдена четверка в строке {row}, столбец {col}-{col+3}")
-        
+                            print(f"Найдена четверка в строке {row}, столбец {col}-{col + 3}")
+
         # Проверяем четверки по вертикали (40 очков)
         for col in range(GRID_COLS):
             for row in range(GRID_ROWS - 3):
                 tiles = [self.grid[row + i][col] for i in range(4)]
-                
+
                 if all(tile is not None for tile in tiles):
                     first_type = tiles[0].tile_type
                     if all(tile.tile_type == first_type for tile in tiles):
@@ -354,13 +370,13 @@ class GameView(arcade.View):
                             for pos in quad_positions:
                                 matches.add(pos)
                             points_to_add += 40
-                            print(f"Найдена четверка в столбце {col}, строка {row}-{row+3}")
-        
+                            print(f"Найдена четверка в столбце {col}, строка {row}-{row + 3}")
+
         # Проверяем тройки по горизонтали (30 очков)
         for row in range(GRID_ROWS):
             for col in range(GRID_COLS - 2):
                 tiles = [self.grid[row][col + i] for i in range(3)]
-                
+
                 if all(tile is not None for tile in tiles):
                     first_type = tiles[0].tile_type
                     if all(tile.tile_type == first_type for tile in tiles):
@@ -370,13 +386,13 @@ class GameView(arcade.View):
                             for pos in triple_positions:
                                 matches.add(pos)
                             points_to_add += 30
-                            print(f"Найдена тройка в строке {row}, столбец {col}-{col+2}")
-        
+                            print(f"Найдена тройка в строке {row}, столбец {col}-{col + 2}")
+
         # Проверяем тройки по вертикали (30 очков)
         for col in range(GRID_COLS):
             for row in range(GRID_ROWS - 2):
                 tiles = [self.grid[row + i][col] for i in range(3)]
-                
+
                 if all(tile is not None for tile in tiles):
                     first_type = tiles[0].tile_type
                     if all(tile.tile_type == first_type for tile in tiles):
@@ -385,8 +401,8 @@ class GameView(arcade.View):
                             for pos in triple_positions:
                                 matches.add(pos)
                             points_to_add += 30
-                            print(f"Найдена тройка в столбце {col}, строка {row}-{row+2}")
-        
+                            print(f"Найдена тройка в столбце {col}, строка {row}-{row + 2}")
+
         if matches:
             self.score += points_to_add
             print(f"Всего найдено {len(matches)} плиток в совпадениях")
@@ -396,27 +412,46 @@ class GameView(arcade.View):
             print("Совпадений не найдено")
 
     def remove_matches(self, positions):
+        has_fading = False
         for row, col in positions:
             tile = self.grid[row][col]
-            if tile:
-                self.tile_list.remove(tile)
-                self.grid[row][col] = None
-        
-        self.fill_empty_spaces()
-        self.check_matches()
+            if tile and not tile.animating_fade:
+                tile.animating_fade = True
+                has_fading = True
+
+        if has_fading:
+            self._waiting_to_fill = True
+            self._check_after_fill = True
 
     def fill_empty_spaces(self):
         for col in range(GRID_COLS):
-            column_tiles = [self.grid[row][col] for row in range(GRID_ROWS - 1, -1, -1) if self.grid[row][col]]
+            # Собираем непустые плитки снизу вверх
+            column_tiles = []
+            for row in range(GRID_ROWS - 1, -1, -1):
+                if self.grid[row][col]:
+                    column_tiles.append(self.grid[row][col])
+
+            # Обновляем позиции существующих
             for i, tile in enumerate(column_tiles):
                 row = GRID_ROWS - 1 - i
-                tile.row, tile.col = row, col
-                tile.update_position()
+                tile.row = row
+                tile.col = col
+                tile.target_x = GRID_X + col * TILE_SIZE + TILE_SIZE // 2
+                tile.target_y = GRID_Y + (GRID_ROWS - 1 - row) * TILE_SIZE + TILE_SIZE // 2
+                tile.animating_move = True
                 self.grid[row][col] = tile
+
+            # Создаём новые плитки сверху
             for i in range(len(column_tiles), GRID_ROWS):
                 row = GRID_ROWS - 1 - i
                 new_type = random.randint(0, len(TILE_TYPES) - 1)
                 new_tile = Tile(new_type, row, col)
+                # Позиция старта — сверху экрана
+                new_tile.center_x = GRID_X + col * TILE_SIZE + TILE_SIZE // 2
+                new_tile.center_y = SCREEN_HEIGHT + TILE_SIZE
+                new_tile.target_x = new_tile.center_x
+                new_tile.target_y = GRID_Y + (GRID_ROWS - 1 - row) * TILE_SIZE + TILE_SIZE // 2
+                new_tile.animating_move = True
                 self.grid[row][col] = new_tile
                 self.tile_list.append(new_tile)
 
@@ -450,7 +485,7 @@ class GameView(arcade.View):
         else:
             self.moves_text.color = arcade.color.RED
         self.moves_text.value = f"Ходы: {self.moves_left}"
-        
+
         # Рисуем текстовые объекты
         self.score_text.draw()
         self.moves_text.draw()
@@ -462,11 +497,11 @@ class GameView(arcade.View):
             0, SCREEN_WIDTH, 0, SCREEN_HEIGHT,
             (0, 0, 0, 180)
         )
-        
+
         if not self.showing_stats and not self.showing_high_scores:
             if not self.result_saved:
                 self.save_game_result()
-            
+
             # Показываем сообщение о загрузке
             loading_text = arcade.Text(
                 "Загрузка результатов...",
@@ -475,10 +510,10 @@ class GameView(arcade.View):
                 anchor_x="center", font_name="Arial"
             )
             loading_text.draw()
-        
+
         elif self.showing_high_scores:
             self.show_high_scores_screen()
-        
+
         elif self.showing_stats:
             self.show_statistics_screen()
 
@@ -488,7 +523,7 @@ class GameView(arcade.View):
             0, SCREEN_WIDTH, 0, SCREEN_HEIGHT,
             (0, 0, 0, 220)
         )
-        
+
         title = arcade.Text(
             "ЛУЧШИЕ РЕЗУЛЬТАТЫ",
             SCREEN_WIDTH // 2, SCREEN_HEIGHT - 100,
@@ -503,10 +538,10 @@ class GameView(arcade.View):
         )
         title.draw()
         subtitle.draw()
-        
+
         try:
             top_scores = db.get_top_scores(level=self.level, limit=5)
-            
+
             if top_scores:
                 y = SCREEN_HEIGHT - 200
                 for rank, (player_name, score, moves_used, total_moves, game_date, level) in enumerate(top_scores, 1):
@@ -526,7 +561,7 @@ class GameView(arcade.View):
                     anchor_x="center", font_name="Arial"
                 )
                 no_scores.draw()
-                
+
         except Exception as e:
             error_text = arcade.Text(
                 f"Ошибка загрузки: {str(e)[:30]}...",
@@ -535,7 +570,7 @@ class GameView(arcade.View):
                 anchor_x="center", font_name="Arial"
             )
             error_text.draw()
-        
+
         # Кнопка возврата
         back_text = arcade.Text(
             "Нажмите TAB для возврата",
@@ -551,7 +586,7 @@ class GameView(arcade.View):
             0, SCREEN_WIDTH, 0, SCREEN_HEIGHT,
             (0, 0, 0, 220)
         )
-        
+
         title = arcade.Text(
             "СТАТИСТИКА",
             SCREEN_WIDTH // 2, SCREEN_HEIGHT - 100,
@@ -559,14 +594,14 @@ class GameView(arcade.View):
             anchor_x="center", font_name="Arial"
         )
         title.draw()
-        
+
         try:
             # Статистика уровня
             level_stats = db.get_level_stats(self.level)
             if level_stats:
                 total_games, wins, avg_score, max_score, min_score, avg_efficiency = level_stats
                 win_rate = (wins / total_games * 100) if total_games > 0 else 0
-                
+
                 y = SCREEN_HEIGHT - 160
                 stats_items = [
                     f"Всего игр: {int(total_games)}",
@@ -574,7 +609,7 @@ class GameView(arcade.View):
                     f"Средний счет: {avg_score:.1f}" if avg_score else "Средний счет: 0",
                     f"Лучший счет: {int(max_score) if max_score else 0}",
                 ]
-                
+
                 for text in stats_items:
                     stat_text = arcade.Text(
                         text,
@@ -592,7 +627,7 @@ class GameView(arcade.View):
                     anchor_x="center", font_name="Arial"
                 )
                 no_stats.draw()
-                
+
         except Exception as e:
             error_text = arcade.Text(
                 f"Ошибка загрузки: {str(e)[:30]}...",
@@ -601,7 +636,7 @@ class GameView(arcade.View):
                 anchor_x="center", font_name="Arial"
             )
             error_text.draw()
-        
+
         # Кнопка возврата
         back_text = arcade.Text(
             "Нажмите S для возврата",
@@ -673,10 +708,14 @@ class GameView(arcade.View):
 
         if other_tile:
             other_tile.row, other_tile.col = old_row, old_col
-            other_tile.update_position()
+            other_tile.target_x = GRID_X + old_col * TILE_SIZE + TILE_SIZE // 2
+            other_tile.target_y = GRID_Y + (GRID_ROWS - 1 - old_row) * TILE_SIZE + TILE_SIZE // 2
+            other_tile.animating_move = True
 
         self.selected_tile.row, self.selected_tile.col = new_row, new_col
-        self.selected_tile.update_position()
+        self.selected_tile.target_x = GRID_X + new_col * TILE_SIZE + TILE_SIZE // 2
+        self.selected_tile.target_y = GRID_Y + (GRID_ROWS - 1 - new_row) * TILE_SIZE + TILE_SIZE // 2
+        self.selected_tile.animating_move = True
 
         # Проверяем совпадения после перемещения
         self.check_matches()
@@ -691,16 +730,16 @@ class GameView(arcade.View):
             if not self.game_over:
                 self.return_to_menu()
             return
-        
+
         # Управление на временном экране завершения
         if self.game_over and not self.result_saved:
             if key == arcade.key.R:
                 self.setup()
-            
+
             elif key == arcade.key.TAB:
                 self.showing_high_scores = not self.showing_high_scores
                 self.showing_stats = False if self.showing_high_scores else self.showing_stats
-            
+
             elif key == arcade.key.S:
                 self.showing_stats = not self.showing_stats
                 self.showing_high_scores = False if self.showing_stats else self.showing_high_scores
@@ -718,4 +757,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
