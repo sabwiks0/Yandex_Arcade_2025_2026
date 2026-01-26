@@ -98,6 +98,10 @@ class GameView(arcade.View):
         self.showing_stats = False
         self.showing_high_scores = False
         self.result_saved = False
+
+        self._waiting_to_fill = False
+        self._check_after_fill = False
+
         self.score_text = arcade.Text(
             f"Очки: {self.score}",
             20, SCREEN_HEIGHT - 40,
