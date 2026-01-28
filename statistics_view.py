@@ -13,7 +13,7 @@ class StatisticsView(arcade.View):
         self.player_name = "Player"
         
     def on_show_view(self):
-        arcade.set_background_color(arcade.color.DARK_SLATE_GRAY)
+        arcade.set_background_color(arcade.color.GRAY)
         
     def on_draw(self):
         self.clear()
@@ -22,7 +22,7 @@ class StatisticsView(arcade.View):
         arcade.draw_text("СТАТИСТИКА ИГРЫ",
                          SCREEN_WIDTH // 2,
                          SCREEN_HEIGHT - 80,
-                         arcade.color.GOLD,
+                         arcade.color.PALE_PINK,
                          font_size=40,
                          anchor_x="center",
                          bold=True)
@@ -39,9 +39,9 @@ class StatisticsView(arcade.View):
                 
                 # Общая статистика
                 stats_items = [
-                    (f"ОБЩАЯ СТАТИСТИКА:", arcade.color.YELLOW),
+                    (f"ОБЩАЯ СТАТИСТИКА:", arcade.color.PALE_BLUE),
                     (f"Всего игр: {int(total_games)}", arcade.color.WHITE),
-                    (f"Побед: {int(wins)} ({win_rate:.1f}%)", arcade.color.GREEN),
+                    (f"Побед: {int(wins)} ({win_rate:.1f}%)", arcade.color.PALE_GREEN),
                     (f"Средний счет: {avg_score:.1f}" if avg_score else "Средний счет: 0", arcade.color.LIGHT_BLUE),
                     (f"Лучший счет: {int(max_score) if max_score else 0}", arcade.color.GOLD),
                     (f"Уникальных игроков: {unique_players}", arcade.color.ORANGE),
@@ -62,7 +62,7 @@ class StatisticsView(arcade.View):
                 level_title = arcade.Text(
                     "СТАТИСТИКА ПО УРОВНЯМ:",
                     SCREEN_WIDTH // 2, y,
-                    arcade.color.YELLOW, 24,
+                    arcade.color.PALE_BLUE, 24,
                     anchor_x="center", font_name="Arial"
                 )
                 level_title.draw()
@@ -103,7 +103,7 @@ class StatisticsView(arcade.View):
                     
                     personal_items = [
                         (f"Игр сыграно: {total_games}", arcade.color.WHITE),
-                        (f"Побед: {total_wins} ({personal_win_rate:.1f}%)", arcade.color.GREEN),
+                        (f"Побед: {total_wins} ({personal_win_rate:.1f}%)", arcade.color.PALE_GREEN),
                         (f"Всего очков: {total_score}", arcade.color.LIGHT_BLUE),
                         (f"Лучший счет: {best_score}", arcade.color.GOLD),
                     ]

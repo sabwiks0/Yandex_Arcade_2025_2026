@@ -87,7 +87,7 @@ class StartView(arcade.View):
     
     def handle_button_click(self, button_text):
         if button_text == "НАЧАТЬ ИГРУ":
-            from level1 import GameView as Level1View
+            from level_first import GameView as Level1View
             level_view = Level1View()
             level_view.window = self.window
             level_view.player_name = "Player"

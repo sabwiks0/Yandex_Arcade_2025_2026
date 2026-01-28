@@ -56,12 +56,12 @@ class GameOverView(arcade.View):
         # Фон
         arcade.draw_lrbt_rectangle_filled(
             0, SCREEN_WIDTH, 0, SCREEN_HEIGHT,
-            arcade.color.DARK_SLATE_GRAY
+            arcade.color.GRAY
         )
         
         # Заголовок в зависимости от результата
         status_text = "ПОБЕДА!" if self.is_win else "ПОРАЖЕНИЕ"
-        status_color = arcade.color.GOLD if self.is_win else arcade.color.RED
+        status_color = arcade.color.PALE_PINK if self.is_win else arcade.color.RED
         
         title = arcade.Text(
             status_text,
@@ -93,7 +93,7 @@ class GameOverView(arcade.View):
             stat_text = arcade.Text(
                 text,
                 SCREEN_WIDTH // 2, y,
-                color, 28,
+                color, 22,
                 anchor_x="center", font_name="Arial"
             )
             stat_text.draw()
@@ -105,10 +105,10 @@ class GameOverView(arcade.View):
     def draw_buttons(self):
         """Отрисовка кнопок"""
         colors = {
-            "ПОВТОРИТЬ УРОВЕНЬ": arcade.color.BLUE,
-            "СЛЕДУЮЩИЙ УРОВЕНЬ": arcade.color.GREEN,
-            "ГЛАВНОЕ МЕНЮ": arcade.color.YELLOW,
-            "ВЫЙТИ": arcade.color.RED
+            "ПОВТОРИТЬ УРОВЕНЬ": arcade.color.LIGHT_BLUE,
+            "СЛЕДУЮЩИЙ УРОВЕНЬ": arcade.color.LIGHT_BLUE,
+            "ГЛАВНОЕ МЕНЮ": arcade.color.LIGHT_BLUE,
+            "ВЫЙТИ": arcade.color.LIGHT_BLUE
         }
         
         for y_pos, text in zip(self.button_y_positions, self.button_texts):
@@ -116,18 +116,18 @@ class GameOverView(arcade.View):
             
             # Фон кнопки
             arcade.draw_lrbt_rectangle_filled(
-                left=SCREEN_WIDTH // 2 - 160,
-                right=SCREEN_WIDTH // 2 + 160,
-                bottom=y_pos - 25,
+                left=SCREEN_WIDTH // 2 - 200,
+                right=SCREEN_WIDTH // 2 + 200,
+                bottom=y_pos - 19,
                 top=y_pos + 25,
                 color=color
             )
             
             # Рамка кнопки
             arcade.draw_lrbt_rectangle_outline(
-                left=SCREEN_WIDTH // 2 - 160,
-                right=SCREEN_WIDTH // 2 + 160,
-                bottom=y_pos - 25,
+                left=SCREEN_WIDTH // 2 - 200,
+                right=SCREEN_WIDTH // 2 + 200,
+                bottom=y_pos - 19,
                 top=y_pos + 25,
                 color=arcade.color.WHITE,
                 border_width=2
