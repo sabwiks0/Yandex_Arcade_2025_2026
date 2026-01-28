@@ -12,7 +12,7 @@ class LevelSelectView(arcade.View):
         self.selected_level = 1
         
     def on_show_view(self):
-        arcade.set_background_color(arcade.color.DARK_GRAY)
+        arcade.set_background_color(arcade.color.GRAY)
         
     def on_draw(self):
         self.clear()
@@ -21,16 +21,16 @@ class LevelSelectView(arcade.View):
         arcade.draw_text("ВЫБЕРИТЕ УРОВЕНЬ",
                          SCREEN_WIDTH // 2,
                          SCREEN_HEIGHT - 100,
-                         arcade.color.GOLD,
+                         arcade.color.PALE_PINK,
                          font_size=40,
                          anchor_x="center",
                          bold=True)
         
         # Описание уровней
         level_descriptions = [
-            "Уровень 1: 3x3 поле, тройки",
-            "Уровень 2: 4x4 поле, тройки и четверки", 
-            "Уровень 3: 5x5 поле, тройки, четверки и пятерки"
+            "3x3 поле, тройки",
+            "4x4 поле, тройки и четверки",
+            "5x5 поле, тройки, четверки и пятерки"
         ]
         
         # Кнопки выбора уровня
@@ -49,16 +49,16 @@ class LevelSelectView(arcade.View):
         for i, (y_pos, desc) in enumerate(zip(button_y_pos, descriptions), 1):
             # Определяем цвет кнопки
             if i == self.selected_level:
-                button_color = arcade.color.GREEN
+                button_color = arcade.color.PALE_GREEN
                 text_color = arcade.color.WHITE
             else:
-                button_color = arcade.color.LIGHT_GRAY
-                text_color = arcade.color.BLACK
+                button_color = arcade.color.LIGHT_BLUE
+                text_color = arcade.color.WHITE
             
             # Рисуем фон кнопки
             arcade.draw_lrbt_rectangle_filled(
-                left=SCREEN_WIDTH // 2 - 200,
-                right=SCREEN_WIDTH // 2 + 200,
+                left=SCREEN_WIDTH // 2 - 250,
+                right=SCREEN_WIDTH // 2 + 250,
                 bottom=y_pos - 40,
                 top=y_pos + 40,
                 color=button_color
@@ -66,8 +66,8 @@ class LevelSelectView(arcade.View):
             
             # Рисуем рамку
             arcade.draw_lrbt_rectangle_outline(
-                left=SCREEN_WIDTH // 2 - 200,
-                right=SCREEN_WIDTH // 2 + 200,
+                left=SCREEN_WIDTH // 2 - 250,
+                right=SCREEN_WIDTH // 2 + 250,
                 bottom=y_pos - 40,
                 top=y_pos + 40,
                 color=arcade.color.DARK_GREEN,
@@ -89,7 +89,7 @@ class LevelSelectView(arcade.View):
                             SCREEN_WIDTH // 2,
                             y_pos - 15,
                             text_color,
-                            font_size=16,
+                            font_size=22,
                             anchor_x="center",
                             anchor_y="center")
     
@@ -101,7 +101,7 @@ class LevelSelectView(arcade.View):
             right=SCREEN_WIDTH // 2 + 150,
             bottom=100,
             top=150,
-            color=arcade.color.BLUE
+            color=arcade.color.PALE_BLUE
         )
         
         # Рисуем рамку
@@ -131,8 +131,8 @@ class LevelSelectView(arcade.View):
             left=SCREEN_WIDTH // 2 - 100,
             right=SCREEN_WIDTH // 2 + 100,
             bottom=50,
-            top=100,
-            color=arcade.color.RED
+            top=90,
+            color=arcade.color.PALE_RED_VIOLET
         )
         
         # Рисуем рамку
@@ -140,7 +140,7 @@ class LevelSelectView(arcade.View):
             left=SCREEN_WIDTH // 2 - 100,
             right=SCREEN_WIDTH // 2 + 100,
             bottom=50,
-            top=100,
+            top=90,
             color=arcade.color.DARK_RED,
             border_width=2
         )
@@ -217,13 +217,13 @@ class LevelSelectView(arcade.View):
     def start_selected_level(self):
         # Запуск выбранного уровня
         if self.selected_level == 1:
-            from level1 import GameView as Level1View
+            from level_first import GameView as Level1View
             level_view = Level1View()  
         elif self.selected_level == 2:
-            from level2 import GameView as Level2View
+            from level_second import GameView as Level2View
             level_view = Level2View()  
         elif self.selected_level == 3:
-            from level3 import GameView as Level3View
+            from level_third import GameView as Level3View
             level_view = Level3View()  
         else:
             return
