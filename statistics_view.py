@@ -10,7 +10,6 @@ class StatisticsView(arcade.View):
     def __init__(self):
         super().__init__()
         self.window = None
-        self.player_name = "Player"
         
     def on_show_view(self):
         arcade.set_background_color(arcade.color.GRAY)
@@ -84,55 +83,6 @@ class StatisticsView(arcade.View):
                         )
                         level_text.draw()
                         y -= 35
-                
-                # Личная статистика
-                player_stats = db.get_player_stats(self.player_name)
-                if player_stats:
-                    y -= 40
-                    personal_title = arcade.Text(
-                        f"ВАША СТАТИСТИКА ({self.player_name}):",
-                        SCREEN_WIDTH // 2, y,
-                        arcade.color.CYAN, 24,
-                        anchor_x="center", font_name="Arial"
-                    )
-                    personal_title.draw()
-                    y -= 40
-                    
-                    player_name, total_games, total_wins, total_score, best_score, last_played = player_stats
-                    personal_win_rate = (total_wins / total_games * 100) if total_games > 0 else 0
-                    
-                    personal_items = [
-                        (f"Игр сыграно: {total_games}", arcade.color.WHITE),
-                        (f"Побед: {total_wins} ({personal_win_rate:.1f}%)", arcade.color.PALE_GREEN),
-                        (f"Всего очков: {total_score}", arcade.color.LIGHT_BLUE),
-                        (f"Лучший счет: {best_score}", arcade.color.GOLD),
-                    ]
-                    
-                    for text, color in personal_items:
-                        stat_text = arcade.Text(
-                            text,
-                            SCREEN_WIDTH // 2, y,
-                            color, 22,
-                            anchor_x="center", font_name="Arial"
-                        )
-                        stat_text.draw()
-                        y -= 35
-                    
-                    # Дата последней игры
-                    if last_played:
-                        if isinstance(last_played, str):
-                            date_str = last_played[:16]
-                        else:
-                            date_str = last_played.strftime("%Y-%m-%d %H:%M")
-                        
-                        date_text = arcade.Text(
-                            f"Последняя игра: {date_str}",
-                            SCREEN_WIDTH // 2, y,
-                            arcade.color.LIGHT_GRAY, 18,
-                            anchor_x="center", font_name="Arial"
-                        )
-                        date_text.draw()
-                        y -= 30
             else:
                 # Нет данных в базе
                 no_data = arcade.Text(
@@ -189,12 +139,12 @@ class StatisticsView(arcade.View):
             self.return_to_menu()
     
     def on_key_press(self, key, modifiers):
-        #Оработка нажатий клавиш
+        # Обработка нажатий клавиш
         if key == arcade.key.ESCAPE:
             self.return_to_menu()
     
     def return_to_menu(self):
-        #Возврат в главное меню
+        # Возврат в главное меню
         from start_view import StartView
         start_view = StartView()
         start_view.window = self.window
